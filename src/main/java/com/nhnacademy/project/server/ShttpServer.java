@@ -5,10 +5,13 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -18,54 +21,61 @@ public class ShttpServer {
     Map<String, Object> header = new HashMap<>();
     String path;
     String method;
+    String httpVersion;
     private String hostIp;
 
     public void serverToDo1() throws IOException {
+        while (true) {
+            try (ServerSocket serverSocket = new ServerSocket(80);
+                 Socket socket = serverSocket.accept()) {
 
-        try (ServerSocket serverSocket = new ServerSocket(80)) {
-            Socket socket = serverSocket.accept();
-            System.out.println("클라이언트 연결1됨.");
-            out = new DataOutputStream(socket.getOutputStream());
-            in = new DataInputStream(socket.getInputStream());
+                System.out.println("클라이언트 연결1됨.");
+                out = new DataOutputStream(socket.getOutputStream());
+                in = new DataInputStream(socket.getInputStream());
 
-            String msg;
-            BufferedReader read = new BufferedReader(new InputStreamReader(in));
+                String msg;
+                BufferedReader read = new BufferedReader(new InputStreamReader(in));
 
-            int i =0;
-            String[] test = new String[4];
-            while(!Objects.equals(msg = read.readLine(), "")) {
-                test[i] = msg;
-                i++;
-            }
+                int i = 0;
+                String[] test = new String[4];
+                while (!Objects.equals(msg = read.readLine(), "")) {
+                    test[i] = msg;
+                    i++;
+                }
 
-            path = test[0].split(" ")[1];
+                path = test[0].split(" ")[1];
+                httpVersion = test[0].split(" ")[2];
+                InetAddress ip = socket.getInetAddress();
 
-            if(path.equals("/ip")) {
-                sendIpPath(out);
-            }
-            if(path.equals("/get")) {
-                sendIpPath(out);
+                if (path.equals("/ip")) {
+                    sendIpPath(out, httpVersion, ip, path);
+//                    break;
+                }
+                if (path.equals("/get")) {
+//                sendIpPath(out);
+                }
             }
         }
     }
 
-    private void sendIpPath(DataOutputStream out) throws IOException {
-        this.out.writeBytes("HTTP/1.1" + " 200 OK\n");
-        this.out.writeBytes("Date: " + LocalDateTime.now() +"\n");
-        this.out.writeBytes("Content-Type: application/json\n");
-        this.out.writeBytes("Content-Length: 33\n");
-        this.out.writeBytes("Connection: keep-alive\n");
-        this.out.writeBytes("Server: gunicorn/19.9.0\n");
-        this.out.writeBytes("Access-Control-Allow-Origin: *\n");
-        this.out.writeBytes("Access-Control-Allow-Credentials: true\n");
-        this.out.writeBytes("\n");
-        this.out.writeBytes("{\n");
-        out.writeBytes("  \"origin\": "+ "bcd[1]" + "\n");
+    private void sendIpPath(DataOutputStream out, String httpVersion, InetAddress ip, String path) throws IOException {
+        String origin = "  \"origin\": "+ "\"" + ip +"\"" + "\n";
+        out.writeBytes(httpVersion + " 200 OK\n");
+        out.writeBytes("Content-Type: application/json\n");
+        out.writeBytes("Date: " + datePattern() +" GMT\n");
+        out.writeBytes("Content-Length: "+ origin.length() + "\n");
+        out.writeBytes("Connection: keep-alive\n");
+        out.writeBytes("Server: team 3/19.9.0\n");
+        out.writeBytes("Access-Control-Allow-Origin: *\n");
+        out.writeBytes("Access-Control-Allow-Credentials: true\n");
+        out.writeBytes(" \n");
+        out.writeBytes("{\n");
+        out.writeBytes(origin);
         out.writeBytes("}\n");
     }
 
     private void recieveGet(DataOutputStream out) throws IOException {
-        out.writeUTF("test");
+
    /*     for ( out : out.) {
             try {
                 out.writeUTF("test");
@@ -73,6 +83,11 @@ public class ShttpServer {
                 // TODO: 해당 클라이언트로 송출 스트림이 실패함(네트워크 끈김)
             }
         }*/
+    }
+
+    public String datePattern(){
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("E, dd M yyyy hh:mm:ss ").withLocale(
+            Locale.ENGLISH));
     }
 }
 
